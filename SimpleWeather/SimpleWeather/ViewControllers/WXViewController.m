@@ -307,8 +307,21 @@ UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-  // TODO: Determine cell height based on screen
-  return 44;
+  NSInteger cellCount = [self tableView:tableView numberOfRowsInSection:indexPath.section];
+  return self.screenHeight / (CGFloat)cellCount;
+}
+
+#pragma mark - UIScrollViewDelegate
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+  // 1
+  CGFloat height = scrollView.bounds.size.height;
+  CGFloat position = MAX(scrollView.contentOffset.y, 0.0);
+  // 2
+  CGFloat percent = MIN(position / height, 1.0);
+  // 3
+  self.blurredImageView.alpha = percent;
 }
 
 @end
