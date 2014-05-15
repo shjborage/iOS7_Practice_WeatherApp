@@ -144,7 +144,15 @@ UITableViewDelegate
      cityLabel.text = [newCondition.locationName capitalizedString];
      
      iconView.image = [UIImage imageNamed:[newCondition imageName]];
-  }];
+   }];
+  
+  RAC(hiloLabel, text) = [[RACSignal combineLatest:@[
+                                                     RACObserve([WXManager sharedManager], currentCondition.tempHigh),
+                                                     RACObserve([WXManager sharedManager], currentCondition.tempLow)]
+                                            reduce:^(NSNumber *high, NSNumber *low) {
+                                              return [NSString stringWithFormat:@"%.0f° / %.0f°", high.floatValue, low.floatValue];
+                                            }]
+                          deliverOn:[RACScheduler mainThreadScheduler]];
   
   [[WXManager sharedManager] findCurrentLocation];
 }
