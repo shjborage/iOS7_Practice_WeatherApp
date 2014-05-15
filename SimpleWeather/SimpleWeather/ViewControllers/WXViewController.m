@@ -8,6 +8,7 @@
 
 #import "WXViewController.h"
 #import <LBBlurredImage/UIImageView+LBBlurredImage.h>
+#import "WXManager.h"
 
 @interface WXViewController () <
 UITableViewDataSource,
@@ -133,6 +134,8 @@ UITableViewDelegate
   iconView.contentMode = UIViewContentModeScaleAspectFit;
   iconView.backgroundColor = [UIColor clearColor];
   [header addSubview:iconView];
+  
+  [[WXManager sharedManager] findCurrentLocation];
 }
 
 - (void)didReceiveMemoryWarning
