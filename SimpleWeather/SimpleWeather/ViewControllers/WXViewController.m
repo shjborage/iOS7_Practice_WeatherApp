@@ -21,9 +21,24 @@ UITableViewDelegate
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, assign) CGFloat screenHeight;
 
+@property (nonatomic, strong) NSDateFormatter *hourlyFormatter;
+@property (nonatomic, strong) NSDateFormatter *dailyFormatter;
+
 @end
 
 @implementation WXViewController
+
+- (id)init
+{
+  if (self = [super init]) {
+    _hourlyFormatter = [[NSDateFormatter alloc] init];
+    _hourlyFormatter.dateFormat = @"h a";
+    
+    _dailyFormatter = [[NSDateFormatter alloc] init];
+    _dailyFormatter.dateFormat = @"EEEE";
+  }
+  return self;
+}
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
@@ -146,6 +161,18 @@ UITableViewDelegate
      iconView.image = [UIImage imageNamed:[newCondition imageName]];
    }];
   
+  [[RACObserve([WXManager sharedManager], hourlyForecast)
+    deliverOn:[RACScheduler mainThreadScheduler]]
+   subscribeNext:^(NSArray *newForecast) {
+     [self.tableView reloadData];
+   }];
+  
+  [[RACObserve([WXManager sharedManager], dailyForecast)
+    deliverOn:[RACScheduler mainThreadScheduler]]
+   subscribeNext:^(NSArray *newForecast) {
+     [self.tableView reloadData];
+   }];
+  
   RAC(hiloLabel, text) = [[RACSignal combineLatest:@[
                                                      RACObserve([WXManager sharedManager], currentCondition.tempHigh),
                                                      RACObserve([WXManager sharedManager], currentCondition.tempLow)]
@@ -201,8 +228,12 @@ UITableViewDelegate
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-  // TODO: Return count of forecast
-  return 0;
+  // 1
+  if (section == 0) {
+    return MIN([[WXManager sharedManager].hourlyForecast count], 6) + 1;
+  }
+  // 2
+  return MIN([[WXManager sharedManager].dailyForecast count], 6) + 1;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -220,9 +251,56 @@ UITableViewDelegate
   cell.textLabel.textColor = [UIColor whiteColor];
   cell.detailTextLabel.textColor = [UIColor whiteColor];
   
-  // TODO: Setup the cell
+  if (indexPath.section == 0) {
+    if (indexPath.row == 0) {
+      [self configureHeaderCell:cell title:@"Hourly Forecast"];
+    } else {
+      WXCondition *weather = [WXManager sharedManager].hourlyForecast[indexPath.row - 1];
+      [self configureHourlyCell:cell weather:weather];
+    }
+  } else if (indexPath.section == 1) {
+    if (indexPath.row == 0) {
+      [self configureHeaderCell:cell title:@"Daily Forecast"];
+    } else {
+      WXCondition *weather = [WXManager sharedManager].dailyForecast[indexPath.row - 1];
+      [self configureDailyCell:cell weather:weather];
+    }
+  }
   
   return cell;
+}
+
+// 1
+- (void)configureHeaderCell:(UITableViewCell *)cell title:(NSString *)title
+{
+  cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue-Medium" size:18];
+  cell.textLabel.text = title;
+  cell.detailTextLabel.text = @"";
+  cell.imageView.image = nil;
+}
+
+// 2
+- (void)configureHourlyCell:(UITableViewCell *)cell weather:(WXCondition *)weather
+{
+  cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue-Light" size:18];
+  cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue-Medium" size:18];
+  cell.textLabel.text = [self.hourlyFormatter stringFromDate:weather.date];
+  cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f°",weather.temperature.floatValue];
+  cell.imageView.image = [UIImage imageNamed:[weather imageName]];
+  cell.imageView.contentMode = UIViewContentModeScaleAspectFit;
+}
+
+// 3
+- (void)configureDailyCell:(UITableViewCell *)cell weather:(WXCondition *)weather
+{
+  cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue-Light" size:18];
+  cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue-Medium" size:18];
+  cell.textLabel.text = [self.dailyFormatter stringFromDate:weather.date];
+  cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f° / %.0f°",
+                               weather.tempHigh.floatValue,
+                               weather.tempLow.floatValue];
+  cell.imageView.image = [UIImage imageNamed:[weather imageName]];
+  cell.imageView.contentMode = UIViewContentModeScaleAspectFit;
 }
 
 #pragma mark - UITableViewDelegate
